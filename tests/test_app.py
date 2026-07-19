@@ -1,24 +1,40 @@
+import pytest
 from fastapi.testclient import TestClient
+from urllib.parse import quote
 
 import src.app as app_module
 from src.app import app
 
 
-def reset_state():
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def reset_activity_state():
+    app_module.activities["Chess Club"]["participants"] = [
+        "michael@mergington.edu",
+        "daniel@mergington.edu",
+    ]
+    yield
     app_module.activities["Chess Club"]["participants"] = [
         "michael@mergington.edu",
         "daniel@mergington.edu",
     ]
 
 
-def test_remove_participant_from_activity():
-    reset_state()
-    client = TestClient(app)
+def test_remove_participant_from_activity(client):
+    # Arrange
+    activity_name = "Chess Club"
+    participant_email = "michael@mergington.edu"
 
+    # Act
     response = client.delete(
-        "/activities/Chess%20Club/participants/michael@mergington.edu"
+        f"/activities/{quote(activity_name)}/participants/{participant_email}"
     )
 
+    # Assert
     assert response.status_code == 200
-    assert "michael@mergington.edu" not in app_module.activities["Chess Club"]["participants"]
-    assert "daniel@mergington.edu" in app_module.activities["Chess Club"]["participants"]
+    assert participant_email not in app_module.activities[activity_name]["participants"]
+    assert "daniel@mergington.edu" in app_module.activities[activity_name]["participants"]
